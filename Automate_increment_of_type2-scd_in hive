@@ -1,0 +1,41 @@
+--File: dim_generic_mst_hive.hql
+
+
+
+set hive.merge.cardinality.check=false;
+use pnb;
+merge into dim_generic_mst using (select increment_dim_generic_mst.generic_id as joinkey,
+       increment_dim_generic_mst.*
+  from increment_dim_generic_mst
+union
+
+select null,increment_dim_generic_mst.*
+  from increment_dim_generic_mst
+  join dim_generic_mst
+    on increment_dim_generic_mst.generic_id = dim_generic_mst.generic_id
+where (dim_generic_mst.generic_key !=
+       increment_dim_generic_mst.generic_key or
+       dim_generic_mst.generic_value !=
+       increment_dim_generic_mst.generic_value))sub
+on sub.joinkey=dim_generic_mst.generic_id
+when matched
+and sub.generic_key  != dim_generic_mst.generic_key
+or sub.generic_value != dim_generic_mst.generic_value
+or sub.generic_desc != dim_generic_mst.generic_desc
+or sub.generic_desc3 !=dim_generic_mst.generic_desc3
+then update set enddate = sub.startdate ,flag=0
+when not matched
+then insert values (('${hiveconf:maxid}' + row_number() over() ) ,sub.generic_id,sub.generic_key,sub.generic_value,sub.gener$
+
+
+
+
+ 
+-- File create with this name in the same dirctory -  dim_generic_mst.sh 
+
+
+
+maxid=$(hive -e "use pnb;select max(id) as maxid from dim_generic_mst");
+hive -hiveconf "maxid"=$maxid -f dim_generic_mst_hive.hql
+
+

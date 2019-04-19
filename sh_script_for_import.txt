@@ -1,0 +1,21 @@
+while read line;
+do
+
+   DBNAME=`echo $line | cut -d'.' -f1`
+   tableName=`echo $line | cut -d'.' -f2`
+
+
+sqoop import -D mapreduce.map.memory.mb=1024 -D mapreduce.map.java.opts=-Xmx7200m  --direct --connect 'jdbc:oracle:thin:@(description=(address=(protocol=tcp)(host=10.1.46.55)(port=1521))(connect_data=(service_name=ORACLE11))(schema=PNBHFL_MAR16))' --username PNBHFL_MAR16 --password 'PNBHFL_MAR16' --table $tableName --fetch-size=10000 --warehouse-dir /user/pnb_all_tables/loan_management_tables -m 1 2>&1|tee -a /home/loan_management/sqoop_logs/log
+
+done </home/loan_management/loan_management_tables.txt (path of the text file where the tables are stored)
+
+
+
+
+
+
+
+
+
+
+

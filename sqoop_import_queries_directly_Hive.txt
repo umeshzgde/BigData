@@ -1,0 +1,56 @@
+
+======kastle==============
+
+
+while read line;
+do
+
+	DBNAME=`echo $line | cut -d'.' -f1`
+	tableName=`echo $line | cut -d'.' -f2`
+
+sqoop import --connect 'jdbc:oracle:thin:@(description=(address=(protocol=tcp)(host=172.19.5.16)(port=1521))(connect_data=(service_name=orcl))(schema=ULSDM_DEV))' --use
+rname ULSDM_DEV  --password 'ULSDM_DEV_JUL' --table $tablename --fetch-size=10000 --hive-drop-import-delims --fields-terminated-by ^ --hive-import --hive-table Kastle_prod.$tableName -m 1 2>&1|tee -a /hadoop/PNBDATA/sqooplog13032019; 
+
+done </home/hadoop/KASTLE_TABLES.txt
+
+
+=========orion============
+
+while read line;
+do
+
+	DBNAME=`echo $line | cut -d'.' -f1`
+	tableName=`echo $line | cut -d'.' -f2`
+
+sqoop import --connect 'jdbc:oracle:thin:@(description=(address=(protocol=tcp)(host=172.19.5.16)(port=1521))(connect_data=(service_name=orcl))(schema=ORION106PNB_UAT))' --username ORION106PNB_UAT --password 'ORION106PNB_UAT' --table 'ULSDM_DEV'.$tableName --fetch-size=20000 --fields-terminated-by ^ --hive-import --hive-table orion_prod.$tableName -m 1 2>&1|tee -a /hadoop/PNBDATA/sqooplog13032019; 
+
+
+done </home/hadoop/ORION_TABLES.txt
+
+
+
+========encore======================
+
+
+while read line;
+do
+
+	DBNAME=`echo $line | cut -d'.' -f1`
+	tableName=`echo $line | cut -d'.' -f2`
+
+sqoop import --connect 'jdbc:sqlserver://172.19.5.25;database=PNBHFL_UAT' --username BI --password Hadoop#123 --driver com.microsoft.sqlserver.jdbc.SQLServerDriver --table $tableName --fetch-size=20000 --hive-drop-import-delims --fields-terminated-by ^ --hive-import --hive-table encore_uat.$tableName -m 1 2>&1|tee -a /hadoop/PNBDATA/sqooplog13032019;
+
+done </home/hadoop/ENCORE_TABLES.txt
+
+
+==============================================================================Important===============================================================================
+
+
+NOTE: 	==Single table import==
+		1. Username, Password has to be changed according to the credentials given or required.
+		2. Schema name should also be confirmed and added in the query as to get the appropriate table.
+		3. TNS details must be properly mentioned.
+		
+==All tables' import==
+		1. Copy all the table names in a text file and save it in a desired location.
+		2. Make a shell file(unix file extension with .sh) and paste the contents mentioned above with appropriate changes to import all tables.

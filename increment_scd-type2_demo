@@ -1,0 +1,52 @@
+create table dim_generic_mst (id int , generic_id int , generic_key string , generic_value string , generic_desc string , generic_desc3 string,startdate string,enddate string,flag int ) clustered by (id) into 1 buckets stored as orc tblproperties('transactional'='true');
+
+
+--Populating dim_generic_mst
+
+insert into dim_generic_mst select row_number() over(), genericid, key,value,description,description3,makedate,'9999-12-31','1' from kastleuls_incremental_update.company_generic_orc;
+
+create table increment_dim_generic_mst (id int , generic_id int , generic_key string , generic_value string , generic_desc string , generic_desc3 string,startdate string ) clustered by (id) into 1 buckets stored as orc tblproperties('transactional'='true');
+
+insert into increment_dim_generic_mst select row_number() over(), genericid, key,value,description,description3,makedate from kastleuls_incremental_update.company_generic_acid;
+
+insert into kastleuls_incremental_update.company_generic_acid values(152,5000,'COLLTYPE1','CRET1','SYSTEMM','2019-04-10 16:45:10.0','X','SYSTEMM','2008-04-10 16:45:10.0','Certificates','NULL','null','null','null',5,20,'Certificates_L21','Certificates_L31','$company_generic_legacycode5$','NULL')
+
+
+
+
+insert into kastleuls_incremental_update.company_generic_acid values(151,5000,'COLLTYPE1','BOND','SYSTEMM','2019-04-10 16:45:10.0','X','SYSTEMM','2008-04-10 16:45:10.0','Certificates','NULL','null','null','null',5,20,'Certificates_L21','Certificates_L31','$company_generic_legacycode5$','NULL')
+insert into kastleuls_incremental_update.company_generic_acid values(100,5000,'COLLTYPE1','BOND','SYSTEMM','2019-04-10 16:45:10.0','X','SYSTEMM','2008-04-10 16:45:10.0','Certificates','NULL','null','null','null',5,20,'Certificates_L21','Certificates_L31','$company_generic_legacycode5$','NULL')
+
+insert into kastleuls_incremental_update.company_generic_acid values(151,5000,'COLLTYPE2','BOND','SYSTEMM','2019-04-10 16:45:10.0','X','SYSTEMM','2008-04-10 16:45:10.0','Certificates','NULL','null','null','null',5,20,'Certificates_L21','Certificates_L31','$company_generic_legacycode5$','NULL')
+insert into kastleuls_incremental_update.company_generic_acid values(100000,5000,'COLLTYPE2','BOND','SYSTEMM','2019-04-10 16:45:10.0','X','SYSTEMM','2008-04-10 16:45:10.0','Certificates','NULL','null','null','null',5,20,'Certificates_L21','Certificates_L31','$company_generic_legacycode5$','NULL')
+
+set mapreduce.input.fileinputformat.split.maxsize=200000000;
+set mapreduce.input.fileinputformat.split.minsize=200000000;
+
+
+
+merge into dim_generic_mst using (select increment_dim_generic_mst.generic_id as joinkey,
+       increment_dim_generic_mst.*
+  from increment_dim_generic_mst
+union
+
+select null, increment_dim_generic_mst.*
+  from increment_dim_generic_mst
+  join (select distinct dim_generic_mst.* from  dim_generic_mst) a
+    on increment_dim_generic_mst.generic_id = a.generic_id
+where (a.generic_key !=
+       increment_dim_generic_mst.generic_key or
+       a.generic_value !=
+       increment_dim_generic_mst.generic_value))sub
+on sub.joinkey=dim_generic_mst.generic_id
+when matched
+and sub.generic_key  != dim_generic_mst.generic_key
+or sub.generic_value != dim_generic_mst.generic_value
+or sub.generic_desc != dim_generic_mst.generic_desc
+or sub.generic_desc3 !=dim_generic_mst.generic_desc3
+then update set enddate = sub.startdate ,flag=0
+when not matched
+then insert values ( (250555+ row_number() over() ) ,sub.generic_id,sub.generic_key,sub.generic_value,sub.generic_desc,sub.generic_desc3,date_add(sub.startdate,1),'9999-12-31','1' );
+
+
+

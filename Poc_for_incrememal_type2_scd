@@ -1,0 +1,69 @@
+POC for update
+
+
+
+1.create table in oracle (People)
+
+id name city makedate
+
+
+2. load oracle data into hdfs using sqoop
+
+
+sqoop import --connect 'jdbc:oracle:thin:@(description=(address=(protocol=tcp)(host=10.1.46.55)(port=1521))(connect_data=(service_name=ORACLE11))(schema=PNBHFL_MAR16))' --username PNBHFL_MAR16 --password 'PNBHFL_MAR16' --table PEOPLE  --target-dir /user/people -m 1
+
+3.create hive table
+
+
+create table people (id int,name string,city string, startdate string,enddate string) row format delimited fields terminated by ',' ;
+
+
+4. load data inpath '/user/people' overwrite into table people;
+
+5. create table people_orc  (id int,name string,city string, startdate string,enddate string) row format delimited fields terminated by ','  stored as orc ;
+
+6. insert overwrite table people_orc select * from people;
+
+7. create table people_acid  (id int,name string,city string, startdate string,enddate string) clustered by (id) into 5 buckets  stored as orc tblproperties('transactional'='true') ;
+
+
+8. load data inpath 'pathoforctableonhdfs' overwrite table people_acid;
+
+9. import incremental data
+sqoop import --connect 'jdbc:oracle:thin:@(description=(address=(protocol=tcp)(host=10.1.46.55)(port=1521))(connect_data=(service_name=ORACLE11))(schema=PNBHFL_MAR16))' --username PNBHFL_MAR16 --password 'PNBHFL_MAR16' --table PEOPLE --check-column MAKEDATE --merge-key id --incremental lastmodified --last-value '19-01-2018' --target-dir /user/people -m 1
+
+
+10. create table people_stagging (id int,name string,city string, startdate string,enddate string) row format delimited fields terminated by ','
+
+
+11. load data inpath '/user/peopleincrement' overwrite into table people_stagging;
+
+12. create table people_stagging_orc  (id int,name string,city string, startdate string,enddate string) row format delimited fields terminated by ','  stored as orc ;
+
+13. insert overwrite table people_stagging_orc select * from people_stagging;
+
+
+14. create table people_stagging_acid  (id int,name string,city string, startdate string,enddate string) clustered by (id) into 5 buckets  stored as orc tblproperties('transactional'='true') ;
+
+
+15. load data inpath '/apps/hive/warehouse/incremental_demo.db/people_stagging_orc/000000_0' overwrite table people__stagging_acid;
+
+
+16. update query
+
+merge into people_acid using (select people_stagging_acid.id as join_key,people_stagging_acid.* from people_stagging_acid
+union
+select null,people_stagging_acid.*
+from
+people_stagging_acid join people_acid on people_stagging_acid.id=people_acid.id
+where
+(people_acid.city != people_stagging_acid.city or people_acid.name != people_stagging_acid.name) )sub
+on sub.join_key=people_acid.id
+when matched
+and sub.city  != people_acid.city
+or sub.name != people_acid.name
+then update set enddate = sub.startdate ,flag=0
+when not matched
+then insert values (sub.id,sub.name,sub.city,date_add(sub.startdate,1),'9999-12-31',1);
+
+
